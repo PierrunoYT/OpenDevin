@@ -62,3 +62,14 @@ ignore = [ "E501" ]
 [tool.black]
 # prevent black (if installed) from changing single quotes to double quotes
 skip-string-normalization = true
+
+[tool.mypy]
+# Mypy specific configurations will be added here
+strict_optional = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+python_version = "3.11"
+
+[[tool.mypy.overrides]]
+module = "pandas"
+ignore_errors = true

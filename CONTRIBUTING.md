@@ -39,6 +39,48 @@ git merge upstream/main
 git push origin main
 ```
 
+### 5. Setup the Code Style and Static Analysis Tools
+
+To maintain the quality of the codebase, we use `mypy` for static type checking. Here’s how you can set them up locally:
+
+#### Setting Up `mypy`
+
+- Install `mypy` using pip:
+  ```shell
+  pip install mypy
+  ```
+
+- To run `mypy` locally and check for type issues:
+  ```shell
+  mypy path/to/your/code.py
+  ```
+
+  Replace `path/to/your/code.py` with the actual path to the files you want to check. It’s recommended to run `mypy` before submitting your pull request to ensure any type issues are resolved.
+
+#### Setting Up `ruff`
+
+- Install `ruff` using pip:
+  ```shell
+  pip install ruff
+  ```
+
+- To run `ruff` and check for code style issues:
+  ```shell
+  ruff path/to/your/directory/
+  ```
+
+  Replace `path/to/your/directory/` with the directory you want to lint. Make sure to resolve any highlighted issues before creating your pull request.
+
+### 6. Mandatory Checks Before Making Pull Requests
+
+Before submitting your pull request, ensure that the following checks are passed:
+
+- Run `mypy` and ensure there are no type issues.
+- Run `ruff` and resolve any code style issues.
+- Ensure all unit and integration tests pass. (Refer to each module’s README under tests for instructions.)
+
+These steps are crucial to maintain the quality of the contribution and ease the review process.
+
 ### 4. Create a New Branch And Open a Pull Request
 After you finish implementation, open forked repository. The source branch is your new branch, and the target branch is `OpenDevin/OpenDevin` `main` branch. Then PR should appears in [OpenDevin PRs](https://github.com/OpenDevin/OpenDevin/pulls).
 
@@ -66,6 +108,8 @@ For example, a PR title could be:
 - `feat(frontend): xxxx`, where `(frontend)` means that this PR mainly focuses on the frontend component.
 
 You may also check out previous PRs in the [PR list](https://github.com/OpenDevin/OpenDevin/pulls).
+
+Please make sure all mandatory checks (mypy, ruff, tests) are passed before submitting the pull request for review. This will help speed up the review process and increase the chance of your pull request being merged.
 
 As described in [here](https://github.com/OpenDevin/OpenDevin/labels), we create several labels. Every PR should be tagged with the corresponding labels.
 
