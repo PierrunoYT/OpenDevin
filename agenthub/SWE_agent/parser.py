@@ -1,4 +1,5 @@
 import re
+from typing import Optional, Tuple, Union
 
 from opendevin.events.action import (
     Action,
@@ -13,13 +14,11 @@ from opendevin.events.action import (
 
 from .prompts import COMMAND_USAGE, CUSTOM_DOCS
 
-# commands: exit, read, write, browse, kill, search_file, search_dir
-
 no_open_file_error = AgentEchoAction(
     'You are not currently in a file. You can use the read command to open a file and then use goto to navigate through it.')
 
 
-def invalid_error(cmd, docs):
+def invalid_error(cmd: str, docs: str) -> str:
     return f"""ERROR:
 Invalid command structure for
 ```
@@ -33,7 +32,7 @@ Try again using this format:
 """
 
 
-def get_action_from_string(command_string: str, path: str, line: int, thoughts: str = '') -> Action | None:
+def get_action_from_string(command_string: str, path: str, line: int, thoughts: str = '') -> Optional[Action]:
     """
     Parses the command string to find which command the agent wants to run
     Converts the command into a proper Action and returns
@@ -61,7 +60,8 @@ def get_action_from_string(command_string: str, path: str, line: int, thoughts: 
     elif 'goto' == cmd:
         if not path:
             return no_open_file_error
-        rex = r'^goto\s+(\d+)$'
+        rex = r'^goto\s+(\d+)'
+
         valid = re.match(rex, command_string)
         if valid:
             start = int(valid.group(1))
@@ -73,7 +73,8 @@ def get_action_from_string(command_string: str, path: str, line: int, thoughts: 
     elif 'edit' == cmd:
         if not path:
             return no_open_file_error
-        rex = r'^edit\s+(\d+)\s+(-?\d+)\s+(\S.*)$'
+        rex = r'^edit\s+(\d+)\s+(-?\d+)\s+(\S.*)'
+
         valid = re.match(rex, command_string, re.DOTALL)
         if valid:
             start = int(valid.group(1))
@@ -86,7 +87,8 @@ def get_action_from_string(command_string: str, path: str, line: int, thoughts: 
             return AgentEchoAction(invalid_error(command_string, 'edit'))
 
     elif 'read' == cmd:
-        rex = r'^read\s+(\S+)(?:\s+(\d+))?(?:\s+(-?\d+))?$'
+        rex = r'^read\s+(\S+)(?:\s+(\d+))?(?:\s+(-?\d+))?'
+
         valid = re.match(rex, command_string, re.DOTALL)
         if valid:
             file = valid.group(1)
@@ -101,7 +103,8 @@ def get_action_from_string(command_string: str, path: str, line: int, thoughts: 
             return AgentEchoAction(invalid_error(command_string, 'read'))
 
     elif 'write' == cmd:
-        rex = r'^write\s+(\S+)\s+(.*?)\s*(\d+)?\s*(-?\d+)?$'
+        rex = r'^write\s+(\S+)\s+(.*?)\s*(\d+)?\s*(-?\d+)?'
+
         valid = re.match(rex, command_string, re.DOTALL)
 
         if valid:
@@ -124,7 +127,8 @@ def get_action_from_string(command_string: str, path: str, line: int, thoughts: 
         return BrowseURLAction(args[0].strip())
 
     elif cmd in ['search_file', 'search_dir', 'find_file']:
-        rex = r'^(search_file|search_dir|find_file)\s+(\S+)(?:\s+(\S+))?$'
+        rex = r'^(search_file|search_dir|find_file)\s+(\S+)(?:\s+(\S+))?'
+
         valid = re.match(rex, command_string, re.DOTALL)
         if valid:
             return CmdRunAction(command_string)
@@ -141,7 +145,7 @@ def get_action_from_string(command_string: str, path: str, line: int, thoughts: 
             return CmdRunAction(command_string)
 
 
-def parse_command(input_str: str, path: str, line: int):
+def parse_command(input_str: str, path: str, line: int) -> Tuple[Optional[Action], str]:
     """
     Parses a given string and separates the command (enclosed in triple backticks) from any accompanying text.
 
@@ -156,7 +160,7 @@ def parse_command(input_str: str, path: str, line: int):
         parts = input_str.split('```')
         command_str = parts[1].strip()
         ind = 2 if len(parts) > 2 else 1
-        accompanying_text = ''.join(parts[:-ind]).strip()
+        accompanying_text = ''.join(parts[ind:]).strip()
         action = get_action_from_string(
             command_str, path, line, accompanying_text)
         if action:

@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from typing import Type
+from typing import Type, Coroutine, Callable
 
 import agenthub  # noqa F401 (we import this to get the agents registered)
 from opendevin.controller import AgentController
@@ -25,7 +25,7 @@ def read_task_from_stdin() -> str:
     return sys.stdin.read()
 
 
-async def main(task_str: str = ''):
+async def main(task_str: str = '') -> None:
     """Main coroutine to run the agent controller with task input flexibility."""
 
     # Determine the task source
@@ -59,7 +59,7 @@ async def main(task_str: str = ''):
         ChangeAgentStateAction(agent_state=AgentState.RUNNING), EventSource.USER
     )
 
-    async def on_event(event: Event):
+    async def on_event(event: Event) -> None:
         if isinstance(event, AgentStateChangedObservation):
             if event.agent_state == AgentState.AWAITING_USER_INPUT:
                 message = input('Request user input >> ')

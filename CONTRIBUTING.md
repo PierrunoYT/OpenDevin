@@ -74,6 +74,50 @@ As described in [here](https://github.com/OpenDevin/OpenDevin/labels), we create
 - If your PR is small (such as a typo fix), you can go brief.
 - If it is large and you have changed a lot, it's better to write more details.
 
+## Type Hints and Static Type Checking
+
+We encourage the use of type hints in the codebase and use `mypy` for static type checking. Please include type hints in your contributions and run `mypy` to check for type consistency.
+
+### Running mypy
+
+To run `mypy` on the codebase, install it using pip if you haven't already:
+
+```shell
+pip install mypy
+```
+
+Then, you can run `mypy` on a specific file or directory:
+
+```shell
+mypy path/to/your/code.py
+```
+
+Or on the entire project:
+
+```shell
+mypy .
+```
+
+### Setting up a pre-commit hook for mypy
+
+To ensure type consistency before committing changes, you can set up a pre-commit hook that runs `mypy`. Add the following script to your `.git/hooks/pre-commit`:
+
+```shell
+#!/bin/sh
+mypy .
+if [ $? -ne 0 ]; then
+  echo "mypy failed, aborting commit"
+  exit 1
+fi
+```
+
+Make sure to make the script executable:
+
+```shell
+chmod +x .git/hooks/pre-commit
+```
+
+Now, `mypy` will run each time you commit, and the commit will be aborted if there are any type inconsistencies.
 
 ## How to begin
 Please refer to the README in each module:

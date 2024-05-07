@@ -94,3 +94,30 @@ poetry run pytest ./tests/unit/test_sandbox.py
 #### Integration tests
 
 Please refer to [this README](./tests/integration/README.md) for details.
+
+### 9. Adding Type Hints
+
+Type hints help ensure that functions are used with the correct types of parameters, which can prevent bugs and improve code readability. To add type hints to your Python code, follow this syntax:
+
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+```
+
+In this example, `name` is expected to be of type `str`, and the function is expected to return a `str`.
+
+### 10. Running Type Checking with mypy
+
+To run type checking on your code, you can use `mypy`, a static type checker for Python. Install `mypy` using `poetry`:
+
+```bash
+poetry add mypy --dev
+```
+
+Then, you can run `mypy` to check your code for type errors:
+
+```bash
+poetry run mypy path/to/your/code.py
+```
+
+If any type inconsistencies are found, `mypy` will report them, allowing you to make the necessary corrections.

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple, Dict
 
 from opendevin.controller.agent import Agent
 from opendevin.controller.state.state import State
@@ -28,25 +28,25 @@ class SWEAgent(Agent):
     SWE-agent includes ACI functions like 'goto', 'search_for', 'edit', 'scroll', 'run'
     """
 
-    def __init__(self, llm: LLM):
+    def __init__(self, llm: LLM) -> None:
         super().__init__(llm)
-        self.memory_window = 4
-        self.max_retries = 2
+        self.memory_window: int = 4
+        self.max_retries: int = 2
         self.running_memory: List[str] = []
         self.cur_file: str = ''
         self.cur_line: int = 0
 
     def _remember(self, action: Action, observation: Observation) -> None:
         """Agent has a limited memory of the few steps implemented as a queue"""
-        memory = MEMORY_FORMAT(action.to_memory(), observation.to_memory())
+        memory: str = MEMORY_FORMAT(action.to_memory(), observation.to_memory())
         self.running_memory.append(memory)
 
-    def _think_act(self, messages: List[dict]) -> tuple[Action, str]:
-        resp = self.llm.completion(
+    def _think_act(self, messages: List[Dict[str, str]]) -> Tuple[Action, str]:
+        resp: Dict = self.llm.completion(
             messages=messages,
             temperature=0.05,
         )
-        action_resp = resp['choices'][0]['message']['content']
+        action_resp: str = resp['choices'][0]['message']['content']
         print(f"\033[1m\033[91m{resp['usage']}\033[0m")
         print(
             '\n==== RAW OUTPUT ====',
@@ -71,24 +71,24 @@ class SWEAgent(Agent):
         for prev_action, obs in state.updated_info:
             self._remember(prev_action, obs)
 
-        prompt = STEP_PROMPT(state.plan.main_goal, self.cur_file, self.cur_line)
+        prompt: str = STEP_PROMPT(state.plan.main_goal, self.cur_file, self.cur_line)
 
-        msgs = [
+        msgs: List[Dict[str, str]] = [
             {'content': SYSTEM_MESSAGE, 'role': 'system'},
             {'content': prompt, 'role': 'user'},
         ]
 
         if len(self.running_memory) > 0:
-            context = CONTEXT_PROMPT(self.running_memory, self.memory_window)
+            context: str = CONTEXT_PROMPT(self.running_memory, self.memory_window)
             msgs.insert(1, {'content': context, 'role': 'user'})
         # clrs = [''] * (len(msgs)-2) + ['\033[0;36m', '\033[0;35m']
         # print('\n\n'.join([c+m['content']+'\033[0m' for c, m in zip(clrs, msgs)]))
         action, thought = self._think_act(messages=msgs)
 
-        start_msg_len = len(msgs)
+        start_msg_len: int = len(msgs)
         while not action and len(msgs) < self.max_retries + start_msg_len:
-            error = NO_ACTION(thought)
-            error_msg = {'content': error, 'role': 'user'}
+            error: str = NO_ACTION(thought)
+            error_msg: Dict[str, str] = {'content': error, 'role': 'user'}
             msgs.append(error_msg)
             action, thought = self._think_act(messages=msgs)
 

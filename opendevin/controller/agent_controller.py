@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional, Type
+from typing import Optional, Type, TypedDict, Union, Dict, List, Tuple
 
 from agenthub.codeact_agent.codeact_agent import CodeActAgent
 from opendevin.controller.action_manager import ActionManager
@@ -41,6 +41,15 @@ from opendevin.runtime.browser.browser_env import BrowserEnv
 MAX_ITERATIONS = config.get(ConfigType.MAX_ITERATIONS)
 MAX_CHARS = config.get(ConfigType.MAX_CHARS)
 
+class InputsDict(TypedDict, total=False):
+    task: str
+
+class OutputsDict(TypedDict, total=False):
+    content: str
+
+class HistoryItem(TypedDict):
+    action: Action
+    observation: Observation
 
 class AgentController:
     id: str
@@ -49,12 +58,12 @@ class AgentController:
     action_manager: ActionManager
     browser: BrowserEnv
     event_stream: EventStream
-    agent_task: Optional[asyncio.Task] = None
-    delegate: 'AgentController | None' = None
-    state: State | None = None
-    _agent_state: AgentState = AgentState.LOADING
-    _cur_step: int = 0
-    _pending_talk_action: AgentTalkAction | None = None
+    agent_task: Optional[asyncio.Task]
+    delegate: Optional['AgentController']
+    state: Optional[State]
+    _agent_state: AgentState
+    _cur_step: int
+    _pending_talk_action: Optional[AgentTalkAction]
 
     def __init__(
         self,
@@ -64,14 +73,6 @@ class AgentController:
         max_iterations: int = MAX_ITERATIONS,
         max_chars: int = MAX_CHARS,
     ):
-        """Initializes a new instance of the AgentController class.
-
-        Args:
-            agent: The agent instance to control.
-            sid: The session ID of the agent.
-            max_iterations: The maximum number of iterations the agent can run.
-            max_chars: The maximum number of characters the agent can output.
-        """
         self.id = sid
         self.agent = agent
         self.event_stream = event_stream
@@ -81,9 +82,7 @@ class AgentController:
         self.max_iterations = max_iterations
         self.action_manager = ActionManager(self.id)
         self.max_chars = max_chars
-        # Initialize agent-required plugins for sandbox (if any)
         self.action_manager.init_sandbox_plugins(agent.sandbox_plugins)
-        # Initialize browser environment
         self.browser = BrowserEnv()
 
         if isinstance(agent, CodeActAgent) and not isinstance(
@@ -100,7 +99,7 @@ class AgentController:
         self.action_manager.sandbox.close()
         await self.set_agent_state_to(AgentState.STOPPED)
 
-    def update_state_for_step(self, i):
+    def update_state_for_step(self, i: int):
         if self.state is None:
             return
         self.state.iteration = i
@@ -115,7 +114,7 @@ class AgentController:
         await self.add_history(NullAction(), AgentErrorObservation(message))
 
     async def add_history(
-        self, action: Action, observation: Observation, add_to_stream=True
+        self, action: Action, observation: Observation, add_to_stream: bool = True
     ):
         if self.state is None:
             raise ValueError('Added history while state was None')
@@ -162,12 +161,9 @@ class AgentController:
                     'I got stuck into a loop, the task has stopped.'
                 )
                 break
-            await asyncio.sleep(
-                0.001
-            )  # Give back control for a tick, so other async stuff can run
+            await asyncio.sleep(0.001)
 
-    async def setup_task(self, task: str, inputs: dict = {}):
-        """Sets up the agent controller with a task."""
+    async def setup_task(self, task: str, inputs: InputsDict = {}):
         await self.set_agent_state_to(AgentState.INIT)
         self.state = State(Plan(task))
         self.state.inputs = inputs
@@ -181,7 +177,6 @@ class AgentController:
                     NullAction(), UserMessageObservation(event.content)
                 )
             else:
-                # FIXME: we're hacking a message action into a user message observation, for the benefit of CodeAct
                 await self.add_history(
                     self._pending_talk_action,
                     UserMessageObservation(event.content),
@@ -221,8 +216,7 @@ class AgentController:
             AgentStateChangedObservation('', self._agent_state), EventSource.AGENT
         )
 
-    def get_agent_state(self):
-        """Returns the current state of the agent task."""
+    def get_agent_state(self) -> AgentState:
         return self._agent_state
 
     async def start_delegate(self, action: AgentDelegateAction):
@@ -248,7 +242,6 @@ class AgentController:
                 obs: Observation = AgentDelegateObservation(content='', outputs=outputs)
                 await self.add_history(NullAction(), obs)
                 self.delegate = None
-                self.delegateAction = None
             return False
 
         logger.info(f'STEP {i}', extra={'msg_type': 'STEP'})
@@ -296,10 +289,10 @@ class AgentController:
         await self.add_history(action, observation)
         return False
 
-    def get_state(self):
+    def get_state(self) -> Optional[State]:
         return self.state
 
-    def _is_stuck(self):
+    def _is_stuck(self) -> bool:
         if (
             self.state is None
             or self.state.history is None
@@ -307,28 +300,22 @@ class AgentController:
         ):
             return False
 
-        # if the last three (Action, Observation) tuples are too repetitive
-        # the agent got stuck in a loop
         if all(
             [
                 self.state.history[-i][0] == self.state.history[-3][0]
                 for i in range(1, 3)
             ]
         ):
-            # it repeats same action, give it a chance, but not if:
             if all(
                 isinstance(self.state.history[-i][1], NullObservation)
                 for i in range(1, 4)
             ):
-                # same (Action, NullObservation): like 'think' the same thought over and over
                 logger.debug('Action, NullObservation loop detected')
                 return True
             elif all(
                 isinstance(self.state.history[-i][1], AgentErrorObservation)
                 for i in range(1, 4)
             ):
-                # (NullAction, AgentErrorObservation): errors coming from an exception
-                # (Action, AgentErrorObservation): the same action getting an error, even if not necessarily the same error
                 logger.debug('Action, AgentErrorObservation loop detected')
                 return True
 

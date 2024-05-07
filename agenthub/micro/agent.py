@@ -1,5 +1,5 @@
 import json
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from jinja2 import BaseLoader, Environment
 
@@ -36,12 +36,12 @@ def parse_response(orig_response: str) -> Action:
     raise LLMOutputError('No valid JSON object found in response.')
 
 
-def my_encoder(obj):
+def my_encoder(obj: Any) -> Dict:
     """
     Encodes objects as dictionaries
 
     Parameters:
-    - obj (Object): An object that will be converted
+    - obj (Any): An object that will be converted
 
     Returns:
     - dict: If the object can be converted it is returned in dict format
@@ -50,7 +50,7 @@ def my_encoder(obj):
         return obj.to_dict()
 
 
-def to_json(obj, **kwargs):
+def to_json(obj: Any, **kwargs) -> str:
     """
     Serialize an object to str format
     """
@@ -58,29 +58,29 @@ def to_json(obj, **kwargs):
 
 
 class MicroAgent(Agent):
-    prompt = ''
-    agent_definition: Dict = {}
+    prompt: str = ''
+    agent_definition: Dict[str, Any] = {}
 
-    def __init__(self, llm: LLM):
+    def __init__(self, llm: LLM) -> None:
         super().__init__(llm)
         if 'name' not in self.agent_definition:
             raise ValueError('Agent definition must contain a name')
-        self.prompt_template = Environment(loader=BaseLoader).from_string(self.prompt)
-        self.delegates = all_microagents.copy()
+        self.prompt_template: Environment = Environment(loader=BaseLoader).from_string(self.prompt)
+        self.delegates: Dict[str, 'MicroAgent'] = all_microagents.copy()
         del self.delegates[self.agent_definition['name']]
 
     def step(self, state: State) -> Action:
-        prompt = self.prompt_template.render(
+        prompt: str = self.prompt_template.render(
             state=state,
             instructions=instructions,
             to_json=to_json,
             delegates=self.delegates,
         )
-        messages = [{'content': prompt, 'role': 'user'}]
-        resp = self.llm.completion(messages=messages)
-        action_resp = resp['choices'][0]['message']['content']
+        messages: List[Dict[str, str]] = [{'content': prompt, 'role': 'user'}]
+        resp: Dict[str, Any] = self.llm.completion(messages=messages)
+        action_resp: str = resp['choices'][0]['message']['content']
         state.num_of_chars += len(prompt) + len(action_resp)
-        action = parse_response(action_resp)
+        action: Action = parse_response(action_resp)
         return action
 
     def search_memory(self, query: str) -> List[str]:
